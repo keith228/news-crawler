@@ -15,9 +15,10 @@ html_utf = response.read()
 
 #transfer to std json format
 js = GetMiddleStr(html_utf,'var newPostList={"newPosts":','}],')
-js_0 = js.replace('{"d":0,"1":','')
-js_1 = js_0.replace('}},','},')
-news_json = js_1 + ']'
+js_0 = js.replace('"d":0,','')
+js_1 = js_0.replace('"1":{','')
+js_2 = js_1.replace('}},','},')
+news_json = js_2 + ']'
 
 '''
 key : value

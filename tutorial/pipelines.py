@@ -2,7 +2,8 @@
 
 import re
 import MySQLdb
-from tutorial.items import NaverArticleItem, NaverCommentItem
+from tutorial.items import NaverArticleItem, NaverCommentItem, NeteaseArticleItem
+from tutorial.spiders.netease_spider import NeteaseSpider
 
 # Define your item pipelines here
 #
@@ -17,9 +18,9 @@ class TutorialPipeline(object):
 class MySQLPipeline(object):
 
     db_host = 'localhost'
-    db_name = 'mers'
-    db_user = 'mers'
-    db_pw = 'Kb459CKS7nQLsHbD'
+    db_name = 'mers_zhwang'
+    db_user = 'mers_zhwang'
+    db_pw = 'Khhd7ALtc8XLhwVK'
 
     def open_spider(self, spider):
         try:
@@ -44,6 +45,8 @@ class MySQLPipeline(object):
         table_name = ''
         if isinstance(item, NaverArticleItem):
             table_name = 'articles'
+        elif isinstance(item, NeteaseArticleItem):
+            table_name = 'articles_163'
         elif isinstance(item, NaverCommentItem):
             # cleansing
             # ㅋㅋㅋㅋㅋㅋ/ㅎㅎㅎㅎㅎㅎ => ㅋ/ㅎ

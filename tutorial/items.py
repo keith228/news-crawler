@@ -30,3 +30,13 @@ class NaverCommentItem(scrapy.Item):
     like_count = scrapy.Field()
     dislike_count = scrapy.Field()
     contents = scrapy.Field()
+
+class NeteaseArticleItem(scrapy.Item):
+    aid = scrapy.Field()
+    oid = scrapy.Field()
+    date = scrapy.Field()
+    agency = scrapy.Field()
+    title = scrapy.Field()
+    contents = scrapy.Field()
+    url = scrapy.Field()
+    referer = scrapy.Field()
