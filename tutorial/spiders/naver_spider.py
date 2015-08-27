@@ -9,6 +9,7 @@ from urlparse import urlparse, parse_qs
 import scrapy
 from tutorial.items import NaverArticleItem, NaverCommentItem
 import MySQLdb
+import datetime
 
 class NaverSpider(scrapy.Spider):
     name = 'Naver'
@@ -23,12 +24,15 @@ class NaverSpider(scrapy.Spider):
     '''
     Constructor
     '''
-    def __init__(self, start_date = '', end_date = '',check_date = '', *args, **kwargs):
-        self.s_date = start_date
-        self.e_date = end_date
-        self.c_date = check_date
+    def __init__(self, start_date = '', end_date = '', check_date = '', *args, **kwargs):
+
+        self.s_date = str(datetime.date.today())
+        self.e_date = self.s_date
+        self.c_date = str(datetime.date.today() - datetime.timedelta(days=1))
+
         self.start_urls = [self.get_query_url(self.s_date, self.e_date, self.page_cnt)]
         super(NaverSpider, self).__init__(*args, **kwargs)
+
 
     '''
     Get the query url
@@ -54,12 +58,12 @@ class NaverSpider(scrapy.Spider):
         try:
             conn = MySQLdb.connect(
                     host = 'localhost',
-                    user = 'mers',
-                    passwd = 'Kb459CKS7nQLsHbD',
+                    user = 'news',
+                    passwd = 'T7BXFLPfZKPLQhpr',
                     charset = 'utf8'
                     )
             cur = conn.cursor()
-            conn.select_db('mers')
+            conn.select_db('naver_news')
             #sql = "select url from articles where date like '%%" + self.c_date + "%%'"
             sql = "select url from articles where date(date) = '" + self.c_date + "'"
             url = cur.execute(sql)
@@ -301,12 +305,12 @@ class NaverSpider(scrapy.Spider):
         try:
             conn = MySQLdb.connect(
                     host = 'localhost',
-                    user = 'mers',
-                    passwd = 'Kb459CKS7nQLsHbD',
+                    user = 'news',
+                    passwd = 'T7BXFLPfZKPLQhpr',
                     charset = 'utf8'
                     )
             cur = conn.cursor()
-            conn.select_db('mers')
+            conn.select_db('naver_news')
 
             sql = "update articles set deleted = 'Y' where url = '%s'" % (url)
             cur.execute(sql)
@@ -325,12 +329,12 @@ class NaverSpider(scrapy.Spider):
         try:
             conn = MySQLdb.connect(
                     host = 'localhost',
-                    user = 'mers',
-                    passwd = 'Kb459CKS7nQLsHbD',
+                    user = 'news',
+                    passwd = 'T7BXFLPfZKPLQhpr',
                     charset = 'utf8'
                     )
             cur = conn.cursor()
-            conn.select_db('mers')
+            conn.select_db('naver_news')
 
             sql = 'update counts set v = v + %s where k = "%s"' % (cnt, tpe)
             cur.execute(sql)
@@ -348,12 +352,12 @@ class NaverSpider(scrapy.Spider):
         try:
             conn = MySQLdb.connect(
                     host = 'localhost',
-                    user = 'mers',
-                    passwd = 'Kb459CKS7nQLsHbD',
+                    user = 'news',
+                    passwd = 'T7BXFLPfZKPLQhpr',
                     charset = 'utf8'
                     )
             cur = conn.cursor()
-            conn.select_db('mers')
+            conn.select_db('naver_news')
 
             sql = 'insert into urls set url = "%s"' % url
             cur.execute(sql)
