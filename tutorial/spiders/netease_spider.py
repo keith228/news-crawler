@@ -3,6 +3,7 @@
 import sys, traceback
 import re
 import time
+import datetime
 import json
 import urllib
 import urllib2
@@ -32,12 +33,14 @@ class NeteaseSpider(scrapy.Spider):
     Get the query url
     '''
     def get_query_url(self, search_date):
-        #qs = {'query': keyword}
 
-        #return 'http://imnews.imbc.com/player/list_frame.aspx?ntype=vod&category=desk' \
-        #        + '&day=' + search_date.replace("-","")
-        return 'http://news.163.com/special/0001220O/news_json.js'
-
+        lastday = str(datetime.date.today() - datetime.timedelta(days=1))
+        year = lastday[0:4]
+        month = lastday[5:7]
+        day = lastday[8:10]
+        #return 'http://news.163.com/special/0001220O/news_json.js'
+        jsurl = 'http://snapshot.news.163.com/wgethtml/http+!!news.163.com!special!0001220O!news_json.js/'+year+'-'+month+'/'+day+'/0.js'
+        return jsurl
     '''
     Starting point.
     Retrieve the news link from the list of search results.
@@ -52,11 +55,19 @@ class NeteaseSpider(scrapy.Spider):
         if endIndex < 0:
             endIndex = len(content)
         return content[startIndex: endIndex]
+
+
     def parse(self, response):
 
         try:
-            #Get news.163.com's json data
-            response = urllib2.urlopen(r'http://news.163.com/special/0001220O/news_json.js')
+            #Get date
+            lastday = str(datetime.date.today() - datetime.timedelta(days=1))
+            year = lastday[0:4]
+            month = lastday[5:7]
+            day = lastday[8:10]
+            #return 'http://news.163.com/special/0001220O/news_json.js'
+            jsurl = 'http://snapshot.news.163.com/wgethtml/http+!!news.163.com!special!0001220O!news_json.js/'+year+'-'+month+'/'+day+'/0.js'
+            response = urllib2.urlopen(jsurl)
             html_gbk = response.read()
 
             # gbk-->utf8
@@ -83,20 +94,20 @@ class NeteaseSpider(scrapy.Spider):
                     if k == 'c': category = v
                 #news_url = 'http://news.163.com/15/0815/19/B134PU1E000146BE.html'
                 news_url = items['l']
-                
                 article = NeteaseArticleItem()
                 article['url'] = news_url
                 article['date'] = news_time
                 article['category'] = category
                 req = scrapy.Request(news_url, callback = self.parse_news, dont_filter = self.dont_filter)
-                
+
                 req.meta['article'] = article
                 yield req
         except Exception, e:
             print 'ERROR!!!!!!!!!!!!!  URL :'
             print traceback.print_exc(file = sys.stdout)
 
-        
+
+
     '''
     Retrieve the comment count link from a given news article.
     Args:
@@ -109,23 +120,34 @@ class NeteaseSpider(scrapy.Spider):
             aid = str(article['url'])[article['url'].rfind('/')+1:-5]
             title =  response.xpath('//div[@class="ep-content"]//h1[@id="h1title"]/text()').extract()
             #print title
-            
+
             agency = response.xpath('//div[@class="ep-content"]//a[@id="ne_article_source"]/text()').extract()
             #print agency
-            
+
             content = response.xpath('//div[@class="ep-content"]//div[@id="endText"]/p/text()').extract()
-            
+
             article['title'] = title[0]
             article['agency'] = agency[0]
             article['aid'] = aid
             article['contents'] = ''.join(content)
-            
+
             yield response.meta['article']
-            
+
             #star comment parsing
             category = article['category']
-            comment_url = 'http://comment.news.163.com/cache/newlist/'
-            if category == 0:
+            news_url = article['url']
+            print '=====================' + news_url
+            comment_url_base = 'http://comment.news.163.com/cache/newlist/'
+
+			#get page source
+            pageSource = urllib2.urlopen(news_url).read().decode("gbk").encode("utf-8")
+	    	#get boardId from page source
+            c = re.search(r"(?<=boardId = ).+?(?=$)",pageSource,re.M)
+            boardID = self.GetMiddleStr(c.group(),'"','",')
+            print boardID + '========================================='
+
+            '''
+			if category == 0:
                 comment_url += 'news_guonei8_bbs/'
             elif category == 1:
                 comment_url += 'news3_bbs/'
@@ -139,24 +161,26 @@ class NeteaseSpider(scrapy.Spider):
                 comment_url += 'news_junshi_bbs/'
             elif category == 6:
                 comment_url += 'photoview_bbs/'
-            comment_url += aid + '_1.html'
-            #print comment_url
+            '''
+            comment_url = comment_url_base + boardID + '/' +  aid + '_1.html'
+            print '=============' + comment_url
             req = scrapy.Request(comment_url, callback = self.parse_comment, dont_filter = self.dont_filter)
             req.meta['aid'] = aid
             yield req
         except Exception, e:
             print 'Parse_news ERROR!!!!!!!!!!!!!  URL :'+ article['url']
             print traceback.print_exc(file = sys.stdout)
-    
+
     def parse_comment(self, response):
-        #res = urllib2.urlopen(response.url)
-        res = urllib2.urlopen(r'http://comment.news.163.com/cache/newlist/news_guonei8_bbs/B18LQ7NT0001124J_1.html')
+        # print '==============================' + response.url
+        res = urllib2.urlopen(response.url)
+        # res = urllib2.urlopen(r'http://comment.news.163.com/cache/newlist/news_guonei8_bbs/B18LQ7NT0001124J_1.html')
         #comment json url is encoded by utf-8
         html_utf = res.read()
-        
+
         check_null = self.GetMiddleStr(html_utf,'var newPostList={"newPosts":',',"')
         if check_null.decode('utf-8') == 'null' : return
-        
+
         #transfer to std json format
         js = self.GetMiddleStr(html_utf,'var newPostList={"newPosts":','}],')
         js_0 = js.replace('"d":0,','')
@@ -166,7 +190,7 @@ class NeteaseSpider(scrapy.Spider):
 
         hjson = json.loads(news_json, encoding ="utf-8")
         print 'comment size is :' + str(len(hjson))
-        
+
         for items in hjson:
             try:
                 comment = NeteaseCommentItem()
@@ -180,7 +204,7 @@ class NeteaseSpider(scrapy.Spider):
                 print 'Parse_comment ERROR!!!!!!!!!!!!!  :'
                 print items
                 print traceback.print_exc(file = sys.stdout)
-        
+
         page = response.url[response.url.rfind('_')+1:response.url.rfind('.html')]
         #print page
         next_comment_url = response.url[:response.url.rfind('_')+1]
@@ -188,4 +212,4 @@ class NeteaseSpider(scrapy.Spider):
         print next_comment_url
         yield scrapy.Request(next_comment_url, callback = self.parse_comment)
 
-        
+
